@@ -11,6 +11,11 @@ fi
 rm -rf /home/linuxbrew/.linuxbrew
 ln -sfn /data/.linuxbrew /home/linuxbrew/.linuxbrew
 
+# Symlink openclaw config so gateway reads from persistent volume
+# (exec-approvals.json uses HOME, not OPENCLAW_STATE_DIR)
+rm -rf /home/openclaw/.openclaw
+ln -sfn /data/.openclaw /home/openclaw/.openclaw
+
 # Set up SSH deploy key for simmer-labs (survives redeploys via env var)
 if [ -n "$SIMMER_LABS_DEPLOY_KEY" ]; then
   mkdir -p /home/openclaw/.ssh
