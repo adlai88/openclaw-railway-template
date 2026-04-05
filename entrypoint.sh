@@ -25,4 +25,11 @@ if [ -n "$SIMMER_LABS_DEPLOY_KEY" ]; then
   chown -R openclaw:openclaw /home/openclaw/.ssh
 fi
 
+# Rebuild QMD collections after container restart (best-effort)
+QMD="/data/node_modules/.bin/qmd"
+if [ -x "$QMD" ]; then
+  echo "[entrypoint] Rebuilding QMD collections..."
+  gosu openclaw "$QMD" update 2>/dev/null || echo "[entrypoint] QMD update skipped"
+fi
+
 exec gosu openclaw node src/server.js
