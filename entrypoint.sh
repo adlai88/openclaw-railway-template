@@ -16,6 +16,15 @@ ln -sfn /data/.linuxbrew /home/linuxbrew/.linuxbrew
 rm -rf /home/openclaw/.openclaw
 ln -sfn /data/.openclaw /home/openclaw/.openclaw
 
+# Fix plugin ownership — OpenClaw requires root-owned plugin dirs
+# (ownership resets to openclaw:openclaw on deploy because /data is chowned above)
+chown -R root:root /data/.openclaw/extensions/ 2>/dev/null || true
+
+# Persist QMD cache on /data volume (default /root/.cache/qmd is ephemeral)
+mkdir -p /data/.qmd-cache
+mkdir -p /root/.cache
+ln -sfn /data/.qmd-cache /root/.cache/qmd
+
 # Set up SSH deploy key for simmer-labs (survives redeploys via env var)
 if [ -n "$SIMMER_LABS_DEPLOY_KEY" ]; then
   mkdir -p /home/openclaw/.ssh
