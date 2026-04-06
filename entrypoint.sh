@@ -20,10 +20,15 @@ ln -sfn /data/.openclaw /home/openclaw/.openclaw
 # (ownership resets to openclaw:openclaw on deploy because /data is chowned above)
 chown -R root:root /data/.openclaw/extensions/ 2>/dev/null || true
 
-# Persist QMD cache on /data volume (default /root/.cache/qmd is ephemeral)
+# Persist QMD cache on /data volume (default ~/.cache/qmd is ephemeral)
+# Symlink for both root and openclaw users since QMD may run as either
 mkdir -p /data/.qmd-cache
+chown openclaw:openclaw /data/.qmd-cache
 mkdir -p /root/.cache
 ln -sfn /data/.qmd-cache /root/.cache/qmd
+mkdir -p /home/openclaw/.cache
+ln -sfn /data/.qmd-cache /home/openclaw/.cache/qmd
+chown -h openclaw:openclaw /home/openclaw/.cache/qmd
 
 # Set up SSH deploy key for simmer-labs (survives redeploys via env var)
 if [ -n "$SIMMER_LABS_DEPLOY_KEY" ]; then
