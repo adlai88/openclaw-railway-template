@@ -46,4 +46,38 @@ if [ -x "$QMD" ]; then
   gosu openclaw "$QMD" update 2>/dev/null || echo "[entrypoint] QMD update skipped"
 fi
 
+# Install Python tooling (uv + simmer-reactor-mcp) on persistent volume.
+# Self-heals if /data is wiped (volume recreate, fresh service from template).
+# The bookworm runtime image has python3 but no pip/pipx, so we provide our own
+# via uv (single static binary). Required for any MCP server shipped as a Python
+# package on PyPI — without this, simmer-reactor-mcp can't start and reactor
+# auto-react silently fails.
+PYTHON_TOOLS_DIR="/data/python-tools"
+UV_BIN="$PYTHON_TOOLS_DIR/bin/uv"
+REACTOR_MCP_BIN="$PYTHON_TOOLS_DIR/bin/simmer-reactor-mcp"
+
+if [ ! -x "$UV_BIN" ]; then
+  echo "[entrypoint] Installing uv to $PYTHON_TOOLS_DIR..."
+  mkdir -p "$PYTHON_TOOLS_DIR/bin"
+  chown -R openclaw:openclaw "$PYTHON_TOOLS_DIR"
+  gosu openclaw bash -c "
+    export UV_INSTALL_DIR=$PYTHON_TOOLS_DIR/bin
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+  " 2>&1 | tail -3 || echo "[entrypoint] uv install failed (non-fatal)"
+fi
+
+if [ -x "$UV_BIN" ] && [ ! -x "$REACTOR_MCP_BIN" ]; then
+  echo "[entrypoint] Installing simmer-reactor-mcp via uv..."
+  gosu openclaw bash -c "
+    export UV_TOOL_DIR=$PYTHON_TOOLS_DIR/tools
+    export UV_TOOL_BIN_DIR=$PYTHON_TOOLS_DIR/bin
+    $UV_BIN tool install simmer-reactor-mcp
+  " 2>&1 | tail -3 || echo "[entrypoint] simmer-reactor-mcp install failed (non-fatal)"
+fi
+
+# Health check: warn if reactor MCP is configured but binary is missing
+if grep -q "simmer-reactor-mcp" /data/.openclaw/openclaw.json 2>/dev/null && [ ! -x "$REACTOR_MCP_BIN" ]; then
+  echo "[entrypoint] WARNING: simmer-reactor MCP is configured but $REACTOR_MCP_BIN is missing — auto-react will not fire"
+fi
+
 exec gosu openclaw node src/server.js
